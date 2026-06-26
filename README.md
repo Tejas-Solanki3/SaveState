@@ -65,13 +65,3 @@ To run SaveState locally, you need to boot up both the Web Application and the A
    python3 app.py
    ```
    *The AI engine will boot up, synchronize facial encodings from MongoDB into active memory, and listen on `http://localhost:5001`.*
-
-## 🔒 Mobile Testing (Secure Context)
-
-Modern mobile browsers strictly require `HTTPS` to access the device camera. If you are testing SaveState on your phone over a local Wi-Fi network, the camera will silently fail. 
-
-To easily test on mobile, use a secure tunnel from your Mac terminal to bypass this restriction:
-```bash
-npx cloudflared tunnel --url http://localhost:3000
-```
-Open the `.trycloudflare.com` URL provided in your phone's browser to successfully test the biometric scanner!
