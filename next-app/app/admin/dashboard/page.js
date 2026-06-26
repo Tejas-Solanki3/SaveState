@@ -110,6 +110,19 @@ export default function AdminDashboard() {
     if (res.ok) fetchLectures(teacherId);
   };
 
+  const handleGenerateCode = async (id) => {
+    const res = await fetch(`/api/admin/lectures/${id}/code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      fetchLectures(teacherId);
+    } else {
+      alert(data.message || 'Failed to generate room code');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('admin_id');
     localStorage.removeItem('admin_name');
@@ -195,6 +208,20 @@ export default function AdminDashboard() {
                         <p className="text-sm text-muted-foreground">{lec.date} &bull; {new Date(`2000-01-01T${lec.startTime}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} to {new Date(`2000-01-01T${lec.endTime}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                       </div>
                       <div className="flex items-center gap-4">
+                        {lec.status === 'active' && (
+                          <div className="flex flex-col items-end mr-2">
+                            {lec.activeCode && new Date() < new Date(lec.codeExpiresAt) ? (
+                              <div className="text-right">
+                                <span className="block text-[10px] text-muted-foreground uppercase font-semibold">Active Code</span>
+                                <span className="text-lg font-mono font-bold text-green-400 tracking-wider bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">{lec.activeCode}</span>
+                              </div>
+                            ) : (
+                              <button onClick={() => handleGenerateCode(lec._id)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2 rounded-xl transition-colors font-medium">
+                                Generate Room Code
+                              </button>
+                            )}
+                          </div>
+                        )}
                         <span className={`px-4 py-2 text-xs font-bold uppercase rounded-full border ${lec.status === 'active' ? 'border-green-500 text-green-400 bg-green-500/10' : lec.status === 'completed' ? 'border-white/20 text-white/50 bg-white/5' : 'border-blue-500 text-blue-400 bg-blue-500/10'}`}>
                           {lec.status}
                         </span>

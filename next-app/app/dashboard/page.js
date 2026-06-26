@@ -1,9 +1,9 @@
 "use client";
-
+ 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
+ 
 export default function Dashboard() {
   const router = useRouter();
   const [lectures, setLectures] = useState([]);
@@ -12,19 +12,26 @@ export default function Dashboard() {
   const [activeLectureId, setActiveLectureId] = useState(null);
   const activeLectureIdRef = useRef(null);
   const [recognitionStatus, setRecognitionStatus] = useState('');
-
+ 
+  // Verification Code States
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [codeLectureId, setCodeLectureId] = useState(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationError, setVerificationError] = useState('');
+  const activeCodeRef = useRef('');
+ 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const intervalRef = useRef(null);
-
+ 
   useEffect(() => {
     // Route Protection
     if (!localStorage.getItem('student_id')) {
       router.push('/login');
       return;
     }
-
+ 
     fetchDashboardData();
     const intervalId = setInterval(fetchDashboardData, 3000);
     return () => {
@@ -32,20 +39,20 @@ export default function Dashboard() {
       stopCamera();
     };
   }, [router]);
-
+ 
   // Bind the camera stream to the video element whenever the modal opens
   useEffect(() => {
     if (isCameraActive && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
     }
   }, [isCameraActive]);
-
+ 
   const fetchDashboardData = async () => {
     try {
       let email = localStorage.getItem('email');
       const student_id = localStorage.getItem('student_id');
       if (!student_id) return;
-
+ 
       if (!email) {
         // Fallback to fetch email if not in localStorage (for older sessions)
         const profileRes = await fetch(`/api/profile?student_id=${student_id}`);
@@ -58,7 +65,7 @@ export default function Dashboard() {
           return;
         }
       }
-
+ 
       const res = await fetch(`/api/student/lectures?email=${encodeURIComponent(email)}&student_id=${student_id}`);
       const data = await res.json();
       if (data.success) {
@@ -70,8 +77,36 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-
-  const startCamera = async (lectureId) => {
+ 
+  const handleRequestCode = (lectureId) => {
+    setCodeLectureId(lectureId);
+    setVerificationCode('');
+    setVerificationError('');
+    setShowCodeModal(true);
+  };
+ 
+  const handleVerifyCodeSubmit = async (e) => {
+    e.preventDefault();
+    setVerificationError('');
+    try {
+      const res = await fetch('/api/student/lectures/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lecture_id: codeLectureId, code: verificationCode })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowCodeModal(false);
+        startCamera(codeLectureId, verificationCode);
+      } else {
+        setVerificationError(data.message || 'Invalid or expired code');
+      }
+    } catch (err) {
+      setVerificationError('Error checking code. Please try again.');
+    }
+  };
+ 
+  const startCamera = async (lectureId, code) => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access requires a secure connection (HTTPS) or localhost.');
@@ -80,9 +115,10 @@ export default function Dashboard() {
       streamRef.current = stream;
       setActiveLectureId(lectureId);
       activeLectureIdRef.current = lectureId;
+      activeCodeRef.current = code;
       setIsCameraActive(true);
       setRecognitionStatus('Scanning for faces...');
-
+ 
       // Start capturing frames every 2 seconds
       intervalRef.current = setInterval(processFrame, 2000);
     } catch (err) {
@@ -90,7 +126,7 @@ export default function Dashboard() {
       setRecognitionStatus("Camera access denied.");
     }
   };
-
+ 
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -101,12 +137,13 @@ export default function Dashboard() {
     setIsCameraActive(false);
     setActiveLectureId(null);
     activeLectureIdRef.current = null;
+    activeCodeRef.current = '';
     setRecognitionStatus('');
   };
-
+ 
   const processFrame = async () => {
     if (!videoRef.current || !canvasRef.current) return;
-
+ 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     
@@ -114,7 +151,7 @@ export default function Dashboard() {
     if (!video || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return;
     
     const context = canvas.getContext('2d');
-
+ 
     // Draw the current video frame to canvas
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -122,7 +159,7 @@ export default function Dashboard() {
     
     // Get base64 image
     const base64Image = canvas.toDataURL('image/jpeg', 0.8);
-
+ 
     try {
       // Send to Python Flask Backend
       const aiEngineUrl = process.env.NEXT_PUBLIC_AI_ENGINE_URL || 'http://localhost:5001';
@@ -131,7 +168,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image })
       });
-
+ 
       const data = await response.json();
       
       if (data.success && data.match) {
@@ -140,14 +177,18 @@ export default function Dashboard() {
           setRecognitionStatus(`Identity Mismatch: You are not Student ${data.student_id}`);
           return;
         }
-
+ 
         setRecognitionStatus(`Identity Confirmed: Student ${data.student_id}`);
         
         // Log attendance to Next.js API
         await fetch('/api/logs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ student_id: data.student_id, lecture_id: activeLectureIdRef.current })
+          body: JSON.stringify({
+            student_id: data.student_id,
+            lecture_id: activeLectureIdRef.current,
+            code: activeCodeRef.current
+          })
         });
         
         // Refresh dashboard data to show as attended
@@ -179,6 +220,48 @@ export default function Dashboard() {
     <main className="min-h-screen relative flex flex-col overflow-hidden bg-background">
       <video className="absolute inset-0 w-full h-full object-cover z-0 opacity-20" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4" autoPlay loop muted playsInline />
       
+      {/* Code Verification Modal */}
+      {showCodeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-rise">
+          <div className="liquid-glass p-8 rounded-3xl flex flex-col items-center max-w-md w-full relative">
+            <h2 className="text-2xl text-white mb-2" style={{ fontFamily: "var(--font-display)" }}>Enter Room Code</h2>
+            <p className="text-sm text-muted-foreground mb-6 text-center">Please enter the 6-digit active room code provided by the teacher.</p>
+            
+            <form onSubmit={handleVerifyCodeSubmit} className="w-full space-y-4">
+              <input
+                type="text"
+                maxLength={6}
+                required
+                placeholder="e.g. AB12CD"
+                value={verificationCode}
+                onChange={e => setVerificationCode(e.target.value.toUpperCase())}
+                className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl font-mono tracking-widest text-white uppercase focus:outline-none focus:border-white/30"
+              />
+              
+              {verificationError && (
+                <p className="text-xs text-red-400 text-center font-medium">{verificationError}</p>
+              )}
+              
+              <div className="flex gap-4 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setShowCodeModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-white/20 text-white hover:bg-white/10 transition-colors text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl bg-white text-black hover:scale-[1.02] transition-transform text-sm font-medium"
+                >
+                  Verify Code
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Camera Modal Popup */}
       {isCameraActive && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-rise">
@@ -277,7 +360,7 @@ export default function Dashboard() {
                       </span>
                     ) : (
                       <button 
-                        onClick={() => startCamera(lecture._id)}
+                        onClick={() => handleRequestCode(lecture._id)}
                         className="bg-white text-black px-4 py-2 rounded-full text-sm font-medium hover:scale-[1.05] transition-transform"
                       >
                         Mark Attendance

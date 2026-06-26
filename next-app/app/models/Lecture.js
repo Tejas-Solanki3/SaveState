@@ -26,6 +26,14 @@ const LectureSchema = new mongoose.Schema({
   endTime: {
     type: String,
     required: true,
+  },
+  activeCode: {
+    type: String,
+    default: null,
+  },
+  codeExpiresAt: {
+    type: Date,
+    default: null,
   }
 });
 

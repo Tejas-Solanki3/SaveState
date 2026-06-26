@@ -39,7 +39,9 @@ export async function GET(req) {
         date: l.date,
         startTime: l.startTime,
         endTime: l.endTime,
-        status
+        status,
+        activeCode: l.activeCode,
+        codeExpiresAt: l.codeExpiresAt
       };
     });
     
