@@ -1,0 +1,11 @@
+setuptools<70
+flask
+flask-cors
+pymongo
+face_recognition
+numpy
+Pillow
+git+https://github.com/ageitgey/face_recognition_models
+opencv-python
+requests
+python-dotenv
