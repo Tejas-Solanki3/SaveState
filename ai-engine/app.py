@@ -1,6 +1,7 @@
 import os
 import io
 import base64
+import gc
 import face_recognition
 import numpy as np
 from PIL import Image
@@ -99,6 +100,9 @@ def recognize_face():
         image_bytes = base64.b64decode(image_b64)
         image = Image.open(io.BytesIO(image_bytes))
         
+        # Downscale image to max 320px to dramatically reduce dlib's RAM footprint and speed up calculations
+        image.thumbnail((320, 320))
+        
         if image.mode != "RGB":
             image = image.convert("RGB")
             
@@ -128,6 +132,8 @@ def recognize_face():
     except Exception as e:
         print("Recognition error:", e)
         return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        gc.collect()
 
 if __name__ == '__main__':
     print("SaveState AI Backend running on port 5000")
