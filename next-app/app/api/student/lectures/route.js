@@ -32,14 +32,7 @@ export async function GET(req) {
       endTime: { $exists: true }
     }).populate('teacher_id', 'name');
     
-    const now = new Date();
-    
-    // Dynamically filter active lectures based on real-time clock
-    const activeLectures = allLectures.filter(l => {
-      const lectureStart = new Date(`${l.date}T${l.startTime}`);
-      const lectureEnd = new Date(`${l.date}T${l.endTime}`);
-      return now >= lectureStart && now <= lectureEnd;
-    });
+    const activeLectures = allLectures;
 
     if (activeLectures.length === 0) {
       return NextResponse.json({ success: true, lectures: [] }, { status: 200 });

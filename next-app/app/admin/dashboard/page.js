@@ -201,39 +201,52 @@ export default function AdminDashboard() {
                   <h3 className="text-2xl mb-4" style={{ fontFamily: "var(--font-display)" }}>Your Lectures</h3>
                   {lectures.length === 0 ? (
                     <div className="p-8 text-center border border-dashed border-white/20 rounded-3xl text-muted-foreground">No lectures scheduled yet.</div>
-                  ) : lectures.map(lec => (
-                    <div key={lec._id} className="liquid-glass p-6 rounded-2xl flex items-center justify-between group hover:bg-white/5 transition-colors">
-                      <div>
-                        <h4 className="text-xl font-medium text-white">{lec.name}</h4>
-                        <p className="text-sm text-muted-foreground">{lec.date} &bull; {new Date(`2000-01-01T${lec.startTime}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} to {new Date(`2000-01-01T${lec.endTime}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                  ) : lectures.map(lec => {
+                    const now = new Date();
+                    const lectureStart = new Date(`${lec.date}T${lec.startTime}`);
+                    const lectureEnd = new Date(`${lec.date}T${lec.endTime}`);
+                    
+                    let localStatus = 'upcoming';
+                    if (now >= lectureStart && now <= lectureEnd) {
+                      localStatus = 'active';
+                    } else if (now > lectureEnd) {
+                      localStatus = 'completed';
+                    }
+                    
+                    return (
+                      <div key={lec._id} className="liquid-glass p-6 rounded-2xl flex items-center justify-between group hover:bg-white/5 transition-colors">
+                        <div>
+                          <h4 className="text-xl font-medium text-white">{lec.name}</h4>
+                          <p className="text-sm text-muted-foreground">{lec.date} &bull; {new Date(`2000-01-01T${lec.startTime}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} to {new Date(`2000-01-01T${lec.endTime}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {localStatus === 'active' && (
+                            <div className="flex flex-col items-end mr-2">
+                              {lec.activeCode && new Date() < new Date(lec.codeExpiresAt) ? (
+                                <div className="text-right">
+                                  <span className="block text-[10px] text-muted-foreground uppercase font-semibold">Active Code</span>
+                                  <span className="text-lg font-mono font-bold text-green-400 tracking-wider bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">{lec.activeCode}</span>
+                                </div>
+                              ) : (
+                                <button onClick={() => handleGenerateCode(lec._id)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2 rounded-xl transition-colors font-medium">
+                                  Generate Room Code
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          <span className={`px-4 py-2 text-xs font-bold uppercase rounded-full border ${localStatus === 'active' ? 'border-green-500 text-green-400 bg-green-500/10' : localStatus === 'completed' ? 'border-white/20 text-white/50 bg-white/5' : 'border-blue-500 text-blue-400 bg-blue-500/10'}`}>
+                            {localStatus}
+                          </span>
+                          <button onClick={() => handleViewAttendance({ ...lec, status: localStatus })} className="bg-white text-black px-4 py-2 rounded-full text-sm font-medium hover:scale-[1.05] transition-transform">
+                            View Roster
+                          </button>
+                          <button onClick={() => handleRemoveLecture(lec._id)} className="bg-red-500/20 text-red-400 px-4 py-2 rounded-full text-sm font-medium hover:bg-red-500/30 transition-colors">
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        {lec.status === 'active' && (
-                          <div className="flex flex-col items-end mr-2">
-                            {lec.activeCode && new Date() < new Date(lec.codeExpiresAt) ? (
-                              <div className="text-right">
-                                <span className="block text-[10px] text-muted-foreground uppercase font-semibold">Active Code</span>
-                                <span className="text-lg font-mono font-bold text-green-400 tracking-wider bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">{lec.activeCode}</span>
-                              </div>
-                            ) : (
-                              <button onClick={() => handleGenerateCode(lec._id)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2 rounded-xl transition-colors font-medium">
-                                Generate Room Code
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        <span className={`px-4 py-2 text-xs font-bold uppercase rounded-full border ${lec.status === 'active' ? 'border-green-500 text-green-400 bg-green-500/10' : lec.status === 'completed' ? 'border-white/20 text-white/50 bg-white/5' : 'border-blue-500 text-blue-400 bg-blue-500/10'}`}>
-                          {lec.status}
-                        </span>
-                        <button onClick={() => handleViewAttendance(lec)} className="bg-white text-black px-4 py-2 rounded-full text-sm font-medium hover:scale-[1.05] transition-transform">
-                          View Roster
-                        </button>
-                        <button onClick={() => handleRemoveLecture(lec._id)} className="bg-red-500/20 text-red-400 px-4 py-2 rounded-full text-sm font-medium hover:bg-red-500/30 transition-colors">
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 
                 <div className="liquid-glass p-6 rounded-3xl h-fit">

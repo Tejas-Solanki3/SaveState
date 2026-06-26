@@ -69,7 +69,14 @@ export default function Dashboard() {
       const res = await fetch(`/api/student/lectures?email=${encodeURIComponent(email)}&student_id=${student_id}`);
       const data = await res.json();
       if (data.success) {
-        setLectures(data.lectures);
+        // Filter active lectures using browser local time to prevent Vercel UTC mismatch
+        const now = new Date();
+        const active = data.lectures.filter(l => {
+          const start = new Date(`${l.date}T${l.startTime}`);
+          const end = new Date(`${l.date}T${l.endTime}`);
+          return now >= start && now <= end;
+        });
+        setLectures(active);
       }
     } catch (err) {
       console.error(err);
