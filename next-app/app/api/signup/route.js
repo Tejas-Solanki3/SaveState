@@ -28,7 +28,8 @@ export async function POST(req) {
 
     // Tell the Python AI Engine to re-fetch users from MongoDB so it knows about this new face
     try {
-      await fetch('http://127.0.0.1:5001/sync', { method: 'POST' });
+      const aiEngineUrl = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5001';
+      await fetch(`${aiEngineUrl}/sync`, { method: 'POST' });
     } catch (e) {
       console.warn('Python AI engine might not be running or failed to sync', e.message);
     }

@@ -125,7 +125,8 @@ export default function Dashboard() {
 
     try {
       // Send to Python Flask Backend
-      const response = await fetch('http://localhost:5001/recognize', {
+      const aiEngineUrl = process.env.NEXT_PUBLIC_AI_ENGINE_URL || 'http://localhost:5001';
+      const response = await fetch(`${aiEngineUrl}/recognize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image })
