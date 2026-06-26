@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import connectToDatabase from '../../../../lib/mongodb';
-import Lecture from '../../../../models/Lecture';
+import connectToDatabase from '@/app/lib/mongodb';
+import Lecture from '@/app/models/Lecture';
 
 // Generate a random 6-character uppercase alphanumeric code
 function generateRandomCode() {
