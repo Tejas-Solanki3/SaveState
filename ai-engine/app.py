@@ -75,6 +75,10 @@ def sync_encodings():
 # Load immediately on startup
 sync_encodings()
 
+@app.route('/')
+def health_check():
+    return jsonify({"status": "healthy", "service": "SaveState AI Engine"}), 200
+
 @app.route('/sync', methods=['POST'])
 def force_sync():
     sync_encodings()
